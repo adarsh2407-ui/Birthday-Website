@@ -1,0 +1,42 @@
+# Dependencies (if using npm)
+node_modules/
+package-lock.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build/Dist
+dist/
+build/
+*.zip
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Python
+__pycache__/
+*.pyc
+.Python
+*.egg-info/
+
+# Temporary files
+*.tmp
+.cache/
+
+# Backups
+*.backup
+*.bak

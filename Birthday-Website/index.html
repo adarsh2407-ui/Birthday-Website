@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A beautiful, personalized birthday experience created with love." />
+    <meta name="theme-color" content="#ff5e93" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Birthday Website for Suhani</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎂</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Cormorant+Garamond:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js" defer></script>
+  </head>
+  <body>
+    <div class="aurora-layer"></div>
+    <div class="loading-screen" id="loading-screen">
+      <div class="loading-card">
+        <div class="spinner"></div>
+        <h1>Preparing your love story</h1>
+        <p>Crafting a soft, glowing birthday experience for you.</p>
+      </div>
+    </div>
+
+    <div class="password-screen" id="password-screen">
+      <div class="glass-card">
+        <div class="icon-badge">🔐</div>
+        <h1>Unlock the Surprise</h1>
+        <p>Enter the secret for <span id="password-name"></span>’s birthday gift.</p>
+        <input id="password-input" type="password" placeholder="Enter password" />
+        <button id="password-btn">Enter</button>
+        <p class="hint">My Universal Password</p>
+      </div>
+    </div>
+
+    <div class="app-shell" id="app-shell">
+      <div class="night-layer" id="night-layer"></div>
+      <div class="moon" id="moon"></div>
+      <div class="clouds" id="clouds"></div>
+      <div class="butterflies" id="butterflies"></div>
+      <div class="stars-layer" id="stars-layer"></div>
+      <div class="cursor-dot" id="cursor-dot"></div>
+      <button id="music-toggle" title="Music">♫</button>
+      <button id="back-btn" aria-label="Back">←</button>
+      <nav id="scene-nav" class="scene-nav"></nav>
+
+      <audio id="bg-music" loop preload="auto" src="assets/music/track1.mp3">
+        <source src="assets/music/track1.mp3" type="audio/mpeg" />
+      </audio>
+
+      <main class="content" id="content">
+        <section class="scene active" id="scene-0">
+          <div class="scene-inner">
+            <div id="envelope-root"></div>
+          </div>
+        </section>
+
+        <section class="scene" id="scene-1">
+        <div class="scene-inner">
+            <div id="storybook-root"></div>
+        </div>
+        </section>
+
+        <section class="scene" id="scene-2">
+        <div class="scene-inner">
+            <div id="constellation-root"></div>
+        </div>
+        </section>
+
+        <section class="scene" id="scene-3">
+        <div class="scene-inner">
+            <div id="garden-root"></div>
+        </div>
+        </section>
+
+        <section class="scene" id="scene-4">
+        <div class="scene-inner">
+            <div id="gallery-root"></div>
+        </div>
+        </section>
+
+        <section class="scene" id="scene-5">
+        <div class="scene-inner">
+            <div id="timeline-root"></div>
+        </div>
+        </section>
+
+        <section class="scene" id="scene-6">
+        <div class="scene-inner">
+            <div id="reasons-root"></div>
+        </div>
+        </section>
+
+        <section class="scene" id="scene-7">
+        <div class="scene-inner">
+            <div id="games-root"></div>
+        </div>
+        </section>
+
+        <section class="scene" id="scene-8">
+        <div class="scene-inner">
+            <div id="countdown-root"></div>
+          </div>
+        </section>
+
+        <section class="scene" id="scene-9">
+          <div class="scene-inner">
+            <div id="finale-root"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="data/config.js"></script>
+    <script src="data/memories.js"></script>
+    <script src="data/reasons.js"></script>
+    <script src="data/timeline.js"></script>
+    <script src="data/messages.js"></script>
+    <script src="components/envelope.js"></script>
+    <script src="components/storybook.js"></script>
+    <script src="components/constellation.js"></script>
+    <script src="components/garden.js"></script>
+    <script src="components/gallery.js"></script>
+    <script src="components/timeline.js"></script>
+    <script src="components/reasons.js"></script>
+    <script src="components/games.js"></script>
+    <script src="components/countdown.js"></script>
+    <script src="components/finale.js"></script>
+    <script src="script.js"></script>
+  </body>
+</html>

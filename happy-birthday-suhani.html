@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>For My Mote</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/canvas-confetti/1.9.2/confetti.browser.min.js"></script>
+
+<style>
+/* ===================================================================
+   DESIGN TOKENS — soft dawn palette: lavender, blush pink, white, gold
+   =================================================================== */
+:root{
+  --sky-top:      #e9dcf9;
+  --sky-mid:      #ffe1ee;
+  --sky-bottom:   #fff8f6;
+  --pink:         #ffc7dd;
+  --pink-deep:    #ff9ec3;
+  --lavender:     #ddc7f7;
+  --lavender-deep:#b596ec;
+  --gold:         #f0c27e;
+  --white:        #fffaf9;
+  --ink:          #4c3a5c;
+  --ink-soft:     #82708f;
+
+  --font-display: 'Great Vibes', cursive;
+  --font-head:    'Cormorant Garamond', serif;
+  --font-body:    'Poppins', sans-serif;
+  --ease: cubic-bezier(.22,.9,.32,1);
+}
+
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0; font-family:var(--font-body); color:var(--ink);
+  -webkit-font-smoothing:antialiased; overflow:hidden;
+  background:linear-gradient(180deg, var(--sky-top), var(--sky-mid) 55%, var(--sky-bottom));
+}
+::selection{ background:var(--pink-deep); color:#fff; }
+button{ font-family:var(--font-body); cursor:pointer; border:none; background:none; }
+h1,h2,h3,p{ margin:0; }
+
+.skip-link{
+  position:fixed; left:-999px; top:0; background:var(--white); color:var(--ink);
+  padding:.6rem 1rem; z-index:999; border-radius:0 0 8px 0;
+}
+.skip-link:focus{ left:0; }
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important; }
+}
+
+/* ===================================================================
+   AMBIENT LAYERS — shared across every scene
+   =================================================================== */
+#sky-canvas{ position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; }
+.moon{
+  position:fixed; top:7vh; right:9vw; width:64px; height:64px; border-radius:50%; z-index:1;
+  background:radial-gradient(circle at 35% 32%, #fffdf6, var(--gold) 72%, #e6b978 100%);
+  box-shadow:0 0 50px 10px rgba(240,194,126,.4), 0 0 100px 30px rgba(240,194,126,.12);
+  opacity:0; transition:opacity 2.5s ease;
+}
+.moon.risen{ opacity:1; }
+.clouds-deco{ position:fixed; inset:0; z-index:0; pointer-events:none; opacity:.55; }
+.cloud-blob{
+  position:absolute; background:rgba(255,255,255,.55); border-radius:50%;
+  filter:blur(2px);
+}
+
+.floaters{ position:fixed; inset:0; pointer-events:none; z-index:2; overflow:hidden; }
+.floater{ position:absolute; bottom:-40px; opacity:.65; animation:floatUp linear infinite; }
+@keyframes floatUp{
+  0%{ transform:translateY(0) translateX(0) rotate(0deg); opacity:0; }
+  10%{ opacity:.7; } 88%{ opacity:.6; }
+  100%{ transform:translateY(-108vh) translateX(var(--drift,20px)) rotate(300deg); opacity:0; }
+}
+
+/* Hidden treasure hearts (fixed, injected per scene) */
+.hidden-heart{
+  position:fixed; width:24px; height:24px; z-index:40; cursor:pointer;
+  filter:drop-shadow(0 0 8px rgba(255,158,196,.7));
+  animation:pulseHeart 2.2s ease-in-out infinite;
+}
+.hidden-heart svg{ width:100%; height:100%; }
+.hidden-heart.found{ animation:none; opacity:0; transform:scale(1.8); transition:opacity .5s, transform .5s; pointer-events:none; }
+@keyframes pulseHeart{ 0%,100%{ transform:scale(1);} 50%{ transform:scale(1.2);} }
+
+#hunt-counter{
+  position:fixed; top:16px; right:16px; z-index:80;
+  background:rgba(255,255,255,.6); border:1px solid rgba(255,255,255,.8);
+  backdrop-filter:blur(10px); box-shadow:0 8px 24px -8px rgba(180,140,190,.4);
+  border-radius:999px; padding:.5rem 1rem; font-size:.75rem; letter-spacing:.04em; color:var(--ink);
+  opacity:0; transform:translateY(-10px); transition:opacity .6s, transform .6s;
+}
+#hunt-counter.show{ opacity:1; transform:translateY(0); }
+
+/* Music + nav dots */
+#music-toggle{
+  position:fixed; bottom:16px; right:16px; z-index:90; width:46px; height:46px; border-radius:50%;
+  background:rgba(255,255,255,.65); border:1px solid rgba(255,255,255,.9); color:var(--ink-soft); font-size:1.05rem;
+  backdrop-filter:blur(10px); box-shadow:0 8px 24px -8px rgba(180,140,190,.4);
+}
+#dots{
+  position:fixed; top:50%; left:14px; transform:translateY(-50%); z-index:80;
+  display:flex; flex-direction:column; gap:8px;
+}
+#dots button{
+  width:8px; height:8px; border-radius:50%; background:rgba(76,58,92,.18);
+  transition:background .3s, transform .3s; padding:0;
+}
+#dots button.visited{ background:rgba(76,58,92,.4); cursor:pointer; }
+#dots button.active{ background:var(--pink-deep); transform:scale(1.5); }
+@media (max-width:640px){ #dots{ display:none; } }
+
+/* Back arrow */
+#back-btn{
+  position:fixed; top:16px; left:16px; z-index:80; width:42px; height:42px; border-radius:50%;
+  background:rgba(255,255,255,.6); border:1px solid rgba(255,255,255,.85); color:var(--ink);
+  backdrop-filter:blur(10px); font-size:1.1rem; opacity:0; pointer-events:none; transition:opacity .4s;
+}
+#back-btn.show{ opacity:1; pointer-events:auto; }
+
+/* Iris transition veil */
+.veil{ position:fixed; inset:0; z-index:999; pointer-events:none; }
+
+/* ===================================================================
+   SCENES
+   =================================================================== */
+.app{ position:relative; width:100vw; height:100vh; height:100dvh; z-index:3; }
+.scene{
+  position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; padding:5rem 1.4rem 3rem; overflow-y:auto;
+  opacity:0; visibility:hidden; pointer-events:none;
+}
+.scene.active{ opacity:1; visibility:visible; pointer-events:auto; }
+.scene-inner{ max-width:640px; width:100%; display:flex; flex-direction:column; align-items:center; gap:1.1rem; }
+
+.chapter{
+  font-family:var(--font-head); font-style:italic; color:var(--lavender-deep);
+  font-size:.8rem; letter-spacing:.3em; text-transform:uppercase;
+}
+.headline{
+  font-family:var(--font-head); font-weight:600; font-size:clamp(1.7rem,4.6vw,2.9rem); color:var(--ink); line-height:1.25;
+}
+.script{ font-family:var(--font-display); font-size:clamp(2.3rem,6.4vw,4.4rem); color:var(--pink-deep); line-height:1.15; }
+.subtext{ font-size:.92rem; color:var(--ink-soft); max-width:460px; }
+
+.continue-btn{
+  margin-top:1.4rem; padding:.95rem 2.1rem; border-radius:999px;
+  background:linear-gradient(120deg,var(--pink),var(--lavender));
+  color:var(--ink); font-size:.85rem; letter-spacing:.08em; text-transform:uppercase;
+  box-shadow:0 14px 30px -10px rgba(181,150,236,.6);
+  opacity:0; transform:translateY(14px); transition:opacity .7s var(--ease), transform .7s var(--ease), box-shadow .3s, transform .2s;
+  pointer-events:none;
+}
+.continue-btn.ready{ opacity:1; transform:translateY(0); pointer-events:auto; }
+.continue-btn:hover{ box-shadow:0 18px 36px -8px rgba(181,150,236,.75); }
+.continue-btn:active{ transform:scale(.96); }
+.hint{ font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); opacity:.75; margin-top:.3rem; }
+
+/* ---------- SCENE 0: envelope ---------- */
+.envelope{
+  position:relative; width:min(68vw,300px); height:min(48vw,200px); cursor:pointer;
+  animation:hover-env 4s ease-in-out infinite;
+}
+@keyframes hover-env{ 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-12px);} }
+.envelope-body{ position:absolute; inset:0; background:linear-gradient(160deg,#fff3f8,#ffe1ee); border-radius:10px; box-shadow:0 26px 55px -16px rgba(181,150,236,.55); }
+.envelope-flap{
+  position:absolute; top:0; left:0; width:100%; height:55%;
+  background:linear-gradient(160deg,#ffd9e9,#f9c6de);
+  clip-path:polygon(0 0,100% 0,50% 100%); transform-origin:top center;
+  transition:transform 1s var(--ease); border-radius:10px 10px 0 0; z-index:2;
+}
+.envelope.open .envelope-flap{ transform:rotateX(180deg); }
+.envelope-seal{
+  position:absolute; top:38%; left:50%; transform:translate(-50%,-50%); width:44px; height:44px; border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, var(--gold), #d99a5c);
+  display:flex; align-items:center; justify-content:center; font-size:1rem; z-index:3;
+  box-shadow:0 4px 14px rgba(0,0,0,.18); transition:opacity .4s;
+}
+.envelope.open .envelope-seal{ opacity:0; }
+.envelope-label{ font-family:var(--font-head); font-style:italic; color:var(--ink); font-size:.95rem; position:absolute; bottom:16%; left:0; right:0; z-index:1; }
+.letter-note{
+  max-width:480px; background:linear-gradient(180deg,#fffdf9,#fff2f6); color:var(--ink); border-radius:8px;
+  padding:2rem 1.7rem; font-family:var(--font-head); font-size:1.25rem; font-style:italic; line-height:1.7;
+  box-shadow:0 26px 55px -18px rgba(181,150,236,.5);
+  opacity:0; transform:translateY(24px) scale(.97); transition:opacity 1s var(--ease), transform 1s var(--ease);
+}
+.letter-note.show{ opacity:1; transform:translateY(0) scale(1); }
+
+/* ---------- SCENE 1: storybook ---------- */
+.book{ position:relative; width:min(88vw,540px); }
+.page{
+  background:linear-gradient(175deg,#fffdf8,#fdf1f4); color:var(--ink); border-radius:10px;
+  padding:2.6rem 2rem; min-height:230px; display:none; flex-direction:column; align-items:center; justify-content:center; gap:.8rem;
+  box-shadow:0 26px 55px -18px rgba(181,150,236,.45);
+  opacity:0; transform:translateY(20px); transition:opacity .6s var(--ease), transform .6s var(--ease);
+}
+.page.show{ display:flex; opacity:1; transform:translateY(0); }
+.page .page-num{ font-family:var(--font-head); font-style:italic; color:var(--pink-deep); font-size:.82rem; letter-spacing:.2em; }
+.page p{ font-family:var(--font-head); font-size:1.28rem; line-height:1.7; }
+.book-nav{ display:flex; align-items:center; justify-content:center; gap:1.4rem; margin-top:1.2rem; }
+.book-nav button{
+  width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,.7); color:var(--ink);
+  box-shadow:0 6px 16px -6px rgba(181,150,236,.5); font-size:1rem;
+}
+.book-nav button:disabled{ opacity:.3; cursor:default; }
+.book-dots{ display:flex; gap:6px; }
+.book-dots span{ width:6px; height:6px; border-radius:50%; background:rgba(76,58,92,.2); }
+.book-dots span.on{ background:var(--pink-deep); }
+
+/* ---------- SCENE 2: constellation ---------- */
+#const-svg{ width:min(92vw,620px); height:auto; overflow:visible; }
+.const-line{ fill:none; stroke:var(--lavender-deep); stroke-width:1.3; opacity:.65; stroke-dasharray:6 6; stroke-dashoffset:1000; }
+.const-line.draw{ animation:drawLine 2s var(--ease) forwards; }
+@keyframes drawLine{ to{ stroke-dashoffset:0; } }
+.const-star{ fill:var(--ink); opacity:0; transform-origin:center; }
+.const-star.pop{ animation:starPop .6s var(--ease) forwards; }
+@keyframes starPop{ 0%{ opacity:0; transform:scale(0);} 60%{ opacity:1; transform:scale(1.5);} 100%{ opacity:1; transform:scale(1);} }
+.const-heart{ opacity:0; transform:scale(0); transform-origin:center; fill:var(--pink-deep); filter:drop-shadow(0 0 10px var(--pink)); }
+.const-heart.show{ animation:heartFinal 1s var(--ease) forwards; }
+@keyframes heartFinal{ 0%{ opacity:0; transform:scale(0);} 70%{ opacity:1; transform:scale(1.3);} 100%{ opacity:1; transform:scale(1);} }
+.const-caption{ font-family:var(--font-display); font-size:1.8rem; color:var(--pink-deep); opacity:0; transition:opacity 1s ease; margin-top:.4rem;}
+.const-caption.show{ opacity:1; }
+
+/* ---------- SCENE 3: garden ---------- */
+.garden-bed{ display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:1.6rem; max-width:640px; }
+.flower{ position:relative; display:flex; flex-direction:column; align-items:center; gap:.5rem; color:var(--ink); }
+.flower-bud{ font-size:2.4rem; transition:transform .5s var(--ease); }
+.flower.open .flower-bud{ transform:scale(1.25) rotate(-4deg); }
+.flower-card{
+  max-width:200px; background:linear-gradient(180deg,#fffdf8,#fdeef3); color:var(--ink); border-radius:12px;
+  padding:1rem; font-size:.82rem; line-height:1.5; box-shadow:0 16px 34px -12px rgba(181,150,236,.45);
+  opacity:0; max-height:0; overflow:hidden; transition:opacity .5s, max-height .6s, margin .6s;
+}
+.flower.open .flower-card{ opacity:1; max-height:260px; margin-top:.3rem; }
+.flower-card .memory-photo{
+  width:100%; height:96px; border-radius:8px; margin-bottom:.5rem;
+  background:linear-gradient(135deg,var(--pink),var(--lavender)); display:flex; align-items:center; justify-content:center;
+  font-size:.68rem; color:var(--ink); opacity:.85;
+}
+.flower-card .memory-quote{ font-family:var(--font-head); font-style:italic; color:var(--pink-deep); }
+
+/* ---------- SCENE 4: love meter ---------- */
+.meter-shell{ width:min(78vw,320px); height:24px; border-radius:999px; background:rgba(255,255,255,.5); border:1px solid rgba(255,255,255,.9); overflow:hidden; }
+.meter-fill{ height:100%; width:0%; border-radius:999px; background:linear-gradient(90deg,var(--pink),var(--pink-deep),var(--lavender-deep)); transition:width 2.2s var(--ease); box-shadow:0 0 20px rgba(255,158,196,.5); }
+.meter-pct{ font-family:var(--font-head); font-size:1.5rem; color:var(--pink-deep); }
+.meter-btn{ padding:.9rem 1.8rem; border-radius:999px; background:rgba(255,255,255,.7); color:var(--ink); font-size:.82rem; letter-spacing:.06em; text-transform:uppercase; box-shadow:0 10px 24px -10px rgba(181,150,236,.5); }
+.meter-btn:disabled{ opacity:.5; }
+.meter-final{ font-family:var(--font-display); font-size:2.1rem; color:var(--pink-deep); opacity:0; transition:opacity 1s ease; }
+.meter-final.show{ opacity:1; }
+
+/* ---------- SCENE 5: fireflies ---------- */
+.firefly-field{ position:relative; width:100%; max-width:640px; height:300px; }
+.firefly{
+  position:absolute; width:12px; height:12px; border-radius:50%;
+  background:radial-gradient(circle,#fff8e0,var(--gold)); box-shadow:0 0 14px 4px rgba(240,194,126,.7);
+  animation:flyAround 7s ease-in-out infinite;
+}
+@keyframes flyAround{ 0%{transform:translate(0,0);} 25%{transform:translate(28px,-18px);} 50%{transform:translate(-10px,22px);} 75%{transform:translate(-28px,-8px);} 100%{transform:translate(0,0);} }
+.firefly-msg{
+  position:absolute; bottom:-24px; left:50%; transform:translateX(-50%); width:min(80vw,320px);
+  background:rgba(255,255,255,.85); border:1px solid rgba(255,255,255,.9); border-radius:10px; padding:.9rem 1.1rem;
+  font-family:var(--font-head); font-style:italic; font-size:1rem; color:var(--ink);
+  opacity:0; transition:opacity .5s ease; box-shadow:0 16px 34px -14px rgba(181,150,236,.5);
+}
+.firefly-msg.show{ opacity:1; }
+
+/* ---------- SCENE 6: balloon ---------- */
+.balloon-btn{ position:relative; width:130px; height:160px; }
+.balloon-body{ position:absolute; top:0; left:18px; width:94px; height:104px; border-radius:50% 50% 48% 48%; background:linear-gradient(160deg,var(--pink),var(--pink-deep)); box-shadow:0 18px 36px -10px rgba(181,150,236,.5); animation:hover-env 5s ease-in-out infinite; }
+.balloon-basket{ position:absolute; bottom:0; left:48px; width:34px; height:22px; border-radius:3px; background:#caa07a; border:2px solid #a97e57; }
+.future-clouds{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:1.3rem; max-width:640px; }
+.cloud-card{
+  background:rgba(255,255,255,.55); border:1px solid rgba(255,255,255,.9); border-radius:16px; padding:1.4rem 1.1rem;
+  opacity:0; transform:translateY(20px) scale(.92); transition:opacity .6s var(--ease), transform .6s var(--ease);
+  box-shadow:0 14px 30px -14px rgba(181,150,236,.4);
+}
+.cloud-card.show{ opacity:1; transform:translateY(0) scale(1); }
+.cloud-card .cloud-icon{ font-size:1.8rem; }
+.cloud-card h3{ font-family:var(--font-head); margin:.2rem 0; color:var(--pink-deep); font-size:1.1rem; }
+.cloud-card p{ font-size:.8rem; color:var(--ink-soft); }
+
+/* ---------- SCENE 7: wish ---------- */
+.shooting-star{ position:absolute; width:3px; height:3px; background:#fff; border-radius:50%; box-shadow:0 0 8px 3px #fff; top:20%; left:-5%; cursor:pointer; }
+.shooting-star::after{ content:''; position:absolute; top:50%; right:100%; width:100px; height:1.5px; background:linear-gradient(90deg,transparent,#fff); transform:translateY(-50%); }
+.shooting-star.fly{ animation:shootAcross 3s linear forwards; }
+@keyframes shootAcross{ to{ transform:translate(130vw,55px); } }
+.wish-result{ font-family:var(--font-display); font-size:1.9rem; color:var(--pink-deep); opacity:0; transition:opacity 1s ease; }
+.wish-result.show{ opacity:1; }
+
+/* ---------- SCENE 8: polaroids ---------- */
+.polaroid-wall{ display:flex; flex-wrap:wrap; justify-content:center; gap:1.8rem 1.3rem; max-width:640px; }
+.polaroid{
+  width:140px; background:#fffdf9; padding:.6rem .6rem 1.4rem; border-radius:4px; color:var(--ink);
+  box-shadow:0 16px 28px -10px rgba(181,150,236,.5); transform:rotate(var(--tilt,0deg));
+  animation:swing 5s ease-in-out infinite; animation-delay:var(--delay,0s); transform-origin:top center; transition:transform .3s;
+}
+@keyframes swing{ 0%,100%{ rotate:var(--tilt,0deg);} 50%{ rotate:calc(var(--tilt,0deg) * -1);} }
+.polaroid:hover{ transform:scale(1.12) rotate(0deg); z-index:5; }
+.polaroid .frame-photo{ width:100%; height:130px; border-radius:2px; margin-bottom:.5rem; background:linear-gradient(135deg,var(--lavender),var(--pink)); display:flex; align-items:center; justify-content:center; font-size:.65rem; opacity:.85; }
+.polaroid .caption{ font-family:var(--font-head); font-style:italic; font-size:.8rem; }
+
+/* ---------- SCENE 9: love letter ---------- */
+.letter-paper{
+  max-width:540px; background:linear-gradient(180deg,#fffdf9,#fdf1f3); color:var(--ink); border-radius:8px;
+  padding:2.4rem 2rem; box-shadow:0 26px 55px -18px rgba(181,150,236,.5);
+  font-family:var(--font-head); font-size:1.12rem; line-height:1.85; text-align:left; min-height:200px;
+}
+.letter-paper .cursor{ display:inline-block; width:2px; background:var(--ink); margin-left:2px; animation:blink 1s step-end infinite; }
+@keyframes blink{ 50%{ opacity:0; } }
+
+/* ---------- SCENE 10: mini game ---------- */
+.game-field{ position:relative; width:min(88vw,460px); height:240px; background:rgba(255,255,255,.4); border:1px dashed rgba(181,150,236,.5); border-radius:16px; touch-action:none; }
+.heart-piece{ position:absolute; width:42px; height:42px; font-size:1.9rem; user-select:none; display:flex; align-items:center; justify-content:center; filter:drop-shadow(0 0 8px rgba(255,158,196,.6)); }
+#heart-drag{ cursor:grab; touch-action:none; }
+#heart-drag:active{ cursor:grabbing; }
+.game-result{ font-family:var(--font-display); font-size:1.9rem; color:var(--pink-deep); opacity:0; transition:opacity 1s ease; }
+.game-result.show{ opacity:1; }
+
+/* ---------- SCENE 11: cake ---------- */
+.cake-wrap{ position:relative; width:200px; }
+.tier{ background:linear-gradient(180deg,#fff0f5,#ffd7e6); border-radius:10px; box-shadow:inset 0 -8px 14px rgba(0,0,0,.05), 0 14px 30px -12px rgba(181,150,236,.5); }
+.tier.bottom{ width:200px; height:72px; }
+.tier.top{ width:136px; height:58px; margin:0 auto; background:linear-gradient(180deg,#fffaf3,#ffe9d6); margin-top:-6px; }
+.drip{ height:12px; background:repeating-linear-gradient(90deg,var(--pink-deep) 0 10px, transparent 10px 20px); border-radius:0 0 8px 8px; }
+.candle{ position:absolute; bottom:calc(100% - 4px); width:7px; height:32px; background:linear-gradient(180deg,#fff,var(--pink)); border-radius:3px; cursor:pointer; }
+.flame{ position:absolute; top:-14px; left:50%; transform:translateX(-50%); width:9px; height:14px; border-radius:50% 50% 50% 50%/60% 60% 40% 40%; background:radial-gradient(circle at 50% 70%,#fff6c9,var(--gold) 60%,#e08c46); box-shadow:0 0 10px 4px rgba(240,194,126,.7); animation:flicker 1.2s ease-in-out infinite; transform-origin:bottom center; }
+@keyframes flicker{ 0%,100%{ transform:translateX(-50%) scale(1) rotate(-2deg);} 50%{ transform:translateX(-50%) scale(1.08) rotate(2deg);} }
+.candle.blown .flame{ display:none; }
+.cake-msg{ font-family:var(--font-display); font-size:1.9rem; color:var(--pink-deep); opacity:0; transition:opacity 1.1s ease; }
+.cake-msg.show{ opacity:1; }
+
+/* ---------- SCENE 12: achievements ---------- */
+.badge-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:1.2rem; max-width:640px; }
+.badge{ background:rgba(255,255,255,.55); border:1px solid rgba(255,255,255,.9); border-radius:14px; padding:1.3rem .9rem; box-shadow:0 12px 26px -12px rgba(181,150,236,.4); }
+.badge .trophy{ font-size:1.6rem; }
+.badge .label{ font-family:var(--font-head); font-size:.9rem; margin-top:.4rem; color:var(--pink-deep); }
+
+/* ---------- SCENE 13: reasons ---------- */
+.reasons-scroller{ display:flex; gap:.9rem; overflow-x:auto; max-width:100%; padding:.4rem .3rem 1rem; scroll-snap-type:x proximity; }
+.reasons-scroller::-webkit-scrollbar{ height:5px; }
+.reasons-scroller::-webkit-scrollbar-thumb{ background:var(--pink-deep); border-radius:4px; }
+.reason-card{ flex:0 0 180px; scroll-snap-align:start; background:linear-gradient(160deg,#fffdf9,#fdeaf0); color:var(--ink); border-radius:12px; padding:1.05rem; font-family:var(--font-head); font-style:italic; font-size:.86rem; line-height:1.5; box-shadow:0 14px 26px -12px rgba(181,150,236,.4); }
+.reason-card .num{ font-family:var(--font-body); font-style:normal; font-size:.64rem; letter-spacing:.14em; color:var(--pink-deep); display:block; margin-bottom:.3rem; }
+
+/* ---------- SCENE 14: together + countdown ---------- */
+.together-list{ list-style:none; padding:0; margin:0; max-width:520px; width:100%; text-align:left; }
+.together-list li{ display:flex; gap:.9rem; align-items:flex-start; padding:.75rem 0; border-bottom:1px solid rgba(76,58,92,.12); }
+.together-list .ico{ font-size:1.2rem; }
+.together-list .txt{ font-family:var(--font-head); font-size:1.05rem; }
+.count-grid{ display:flex; gap:1rem; flex-wrap:wrap; justify-content:center; margin-top:.6rem; }
+.count-box{ background:rgba(255,255,255,.55); border:1px solid rgba(255,255,255,.9); border-radius:14px; padding:1rem 1.2rem; min-width:80px; box-shadow:0 12px 26px -12px rgba(181,150,236,.4); }
+.count-box .num{ font-family:var(--font-head); font-size:1.7rem; color:var(--pink-deep); }
+.count-box .lbl{ font-size:.62rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft); }
+
+/* ---------- SCENE 15: finale ---------- */
+#finale-canvas{ position:absolute; inset:0; }
+.finale-text{ max-width:540px; font-family:var(--font-head); font-size:1.08rem; line-height:1.95; white-space:pre-line; opacity:0; transform:translateY(16px); transition:opacity 1.2s ease, transform 1.2s ease; }
+.finale-text.show{ opacity:1; transform:translateY(0); }
+.last-surprise-btn{
+  margin-top:.6rem; padding:1rem 2.1rem; border-radius:999px; border:1px solid var(--pink-deep); color:var(--pink-deep);
+  font-size:.85rem; letter-spacing:.1em; text-transform:uppercase; transition:background .4s, color .4s, transform .2s;
+}
+.last-surprise-btn:hover{ background:var(--pink-deep); color:#fff; }
+.last-surprise-btn:active{ transform:scale(.96); }
+.final-final{ font-family:var(--font-display); font-size:clamp(1.7rem,4.8vw,2.6rem); color:var(--pink-deep); opacity:0; transition:opacity 1.2s ease; max-width:560px; }
+.final-final.show{ opacity:1; }
+
+@media (max-width:640px){
+  .polaroid{ width:118px; }
+  .cake-wrap{ width:170px; } .tier.bottom{ width:170px; } .tier.top{ width:114px; }
+}
+</style>
+</head>
+<body>
+<a href="#" class="skip-link">Skip to top</a>
+
+<canvas id="sky-canvas"></canvas>
+<div class="moon" id="moon"></div>
+<div class="floaters" id="floaters" aria-hidden="true"></div>
+
+<div id="hunt-counter" role="status" aria-live="polite">💗 <span id="hunt-count">0</span>/10 hidden hearts found</div>
+<button id="back-btn" aria-label="Go back">←</button>
+<div id="dots"></div>
+<button id="music-toggle" aria-label="Toggle background music" title="Music is off by default">🔈</button>
+<audio id="bg-music" loop>
+  <!-- PLACEHOLDER: add your own song -->
+  <!-- <source src="your-song.mp3" type="audio/mpeg"> -->
+</audio>
+
+<div class="app" id="app">
+
+<!-- SCENE 0 — envelope -->
+<section class="scene active" id="scene-0" data-title="Begin">
+  <div class="scene-inner">
+    <div class="envelope" id="envelope" role="button" tabindex="0" aria-label="Open the envelope">
+      <div class="envelope-body"></div>
+      <div class="envelope-label">For My Mote ❤️</div>
+      <div class="envelope-flap"></div>
+      <div class="envelope-seal">💌</div>
+    </div>
+    <p class="hint" id="intro-hint">tap the envelope</p>
+    <div class="letter-note" id="letter-note">
+      Today isn't just another day, Mote...<br><br>
+      Today the world became more beautiful because you were born.
+    </div>
+    <button class="continue-btn" data-next="1">Begin Our Story</button>
+  </div>
+</section>
+
+<!-- SCENE 1 — storybook -->
+<section class="scene" id="scene-1" data-title="Our Story">
+  <div class="scene-inner">
+    <div class="chapter">Chapter One</div>
+    <h2 class="headline">A Little Story, Just For You</h2>
+    <div class="book" id="book"></div>
+    <div class="book-nav">
+      <button id="page-prev" aria-label="Previous page">‹</button>
+      <div class="book-dots" id="book-dots"></div>
+      <button id="page-next" aria-label="Next page">›</button>
+    </div>
+    <button class="continue-btn" data-next="2">Read The Stars</button>
+  </div>
+</section>
+
+<!-- SCENE 2 — constellation -->
+<section class="scene" id="scene-2" data-title="Written In The Stars">
+  <div class="scene-inner">
+    <div class="chapter">Chapter Two</div>
+    <h2 class="headline">Written In The Stars</h2>
+    <svg id="const-svg" viewBox="0 0 700 260"></svg>
+    <div class="const-caption" id="const-caption">my Mote ❤</div>
+    <button class="continue-btn" data-next="3">Into The Garden</button>
+  </div>
+</section>
+
+<!-- SCENE 3 — garden -->
+<section class="scene" id="scene-3" data-title="Memory Garden">
+  <div class="scene-inner">
+    <div class="chapter">Chapter Three</div>
+    <h2 class="headline">The Memory Garden</h2>
+    <p class="subtext">Every flower is a moment I never want to forget. Tap one to let it bloom.</p>
+    <div class="garden-bed" id="garden-bed"></div>
+    <button class="continue-btn" data-next="4">Fill My Heart</button>
+  </div>
+</section>
+
+<!-- SCENE 4 — love meter -->
+<section class="scene" id="scene-4" data-title="Love Meter">
+  <div class="scene-inner">
+    <div class="chapter">Chapter Four</div>
+    <h2 class="headline">How Full Is My Heart?</h2>
+    <div class="meter-shell"><div class="meter-fill" id="meter-fill"></div></div>
+    <div class="meter-pct" id="meter-pct">0%</div>
+    <button class="meter-btn" id="meter-btn">Tap To Fill It Up</button>
+    <div class="meter-final" id="meter-final">My heart has been completely yours.</div>
+    <button class="continue-btn" data-next="5">Chase The Fireflies</button>
+  </div>
+</section>
+
+<!-- SCENE 5 — fireflies -->
+<section class="scene" id="scene-5" data-title="Fireflies">
+  <div class="scene-inner">
+    <div class="chapter">Chapter Five</div>
+    <h2 class="headline">Catch A Little Light</h2>
+    <p class="subtext">Tap a firefly to hear something sweet.</p>
+    <div class="firefly-field" id="firefly-field">
+      <div class="firefly-msg" id="firefly-msg"></div>
+    </div>
+    <button class="continue-btn" data-next="6">Take Flight</button>
+  </div>
+</section>
+
+<!-- SCENE 6 — balloon -->
+<section class="scene" id="scene-6" data-title="Our Future">
+  <div class="scene-inner">
+    <div class="chapter">Chapter Six</div>
+    <h2 class="headline">Our Future</h2>
+    <button class="balloon-btn" id="balloon-btn" aria-label="Start the journey">
+      <div class="balloon-body"></div>
+      <div class="balloon-basket"></div>
+    </button>
+    <p class="hint" id="balloon-hint">tap the balloon to take off</p>
+    <div class="future-clouds" id="future-clouds"></div>
+    <button class="continue-btn" data-next="7">Make A Wish</button>
+  </div>
+</section>
+
+<!-- SCENE 7 — wish -->
+<section class="scene" id="scene-7" data-title="Make A Wish">
+  <div class="scene-inner">
+    <div class="chapter">Chapter Seven</div>
+    <h2 class="headline">Make A Wish</h2>
+    <p class="hint">a shooting star will pass soon — catch it</p>
+    <div class="wish-result" id="wish-result">I already got my wish, Mote...<br>It was you.</div>
+    <button class="continue-btn" data-next="8">Our Little Moments</button>
+  </div>
+</section>
+
+<!-- SCENE 8 — polaroids -->
+<section class="scene" id="scene-8" data-title="Polaroids">
+  <div class="scene-inner">
+    <div class="chapter">Chapter Eight</div>
+    <h2 class="headline">Little Moments, Framed</h2>
+    <div class="polaroid-wall" id="polaroid-wall"></div>
+    <button class="continue-btn" data-next="9">Read My Letter</button>
+  </div>
+</section>
+
+<!-- SCENE 9 — love letter -->
+<section class="scene" id="scene-9" data-title="Love Letter">
+  <div class="scene-inner">
+    <div class="chapter">Chapter Nine</div>
+    <h2 class="headline">A Letter, Written Slowly</h2>
+    <div class="letter-paper" id="letter-paper"><span id="letter-text"></span><span class="cursor"></span></div>
+    <button class="continue-btn" data-next="10">One More Game</button>
+  </div>
+</section>
+
+<!-- SCENE 10 — mini game -->
+<section class="scene" id="scene-10" data-title="Find Your Way">
+  <div class="scene-inner">
+    <div class="chapter">Chapter Ten</div>
+    <h2 class="headline">Find Your Way To Me</h2>
+    <div class="game-field" id="game-field">
+      <div class="heart-piece" id="heart-target" style="right:20px; bottom:20px;">💗</div>
+      <div class="heart-piece" id="heart-drag" style="left:20px; top:20px;">💖</div>
+    </div>
+    <p class="hint">drag the heart to meet the other one</p>
+    <div class="game-result" id="game-result">Just like these hearts...<br>We'll always find each other.</div>
+    <button class="continue-btn" data-next="11">Light The Candles</button>
+  </div>
+</section>
+
+<!-- SCENE 11 — cake -->
+<section class="scene" id="scene-11" data-title="Cake">
+  <div class="scene-inner">
+    <div class="chapter">Chapter Eleven</div>
+    <h2 class="headline">Make It Official</h2>
+    <div class="cake-wrap" id="cake-wrap">
+      <div class="tier top" id="cake-top"></div>
+      <div class="tier bottom" id="cake-bottom"></div>
+      <div class="drip"></div>
+    </div>
+    <p class="hint">blow out the candles — tap each one</p>
+    <div class="cake-msg" id="cake-msg">Happy Birthday My Mote ❤️</div>
+    <button class="continue-btn" data-next="12">You Deserve Applause</button>
+  </div>
+</section>
+
+<!-- SCENE 12 — achievements -->
+<section class="scene" id="scene-12" data-title="Achievements">
+  <div class="scene-inner">
+    <div class="chapter">Honors</div>
+    <h2 class="headline">A Few Awards You've Earned</h2>
+    <div class="badge-grid" id="badge-grid"></div>
+    <button class="continue-btn" data-next="13">100 Reasons</button>
+  </div>
+</section>
+
+<!-- SCENE 13 — reasons -->
+<section class="scene" id="scene-13" data-title="Reasons">
+  <div class="scene-inner">
+    <div class="chapter">100 Reasons</div>
+    <h2 class="headline">Reasons I Love You</h2>
+    <div class="reasons-scroller" id="reasons-scroller"></div>
+    <button class="continue-btn" data-next="14">Our Forever</button>
+  </div>
+</section>
+
+<!-- SCENE 14 — together + countdown -->
+<section class="scene" id="scene-14" data-title="Together">
+  <div class="scene-inner">
+    <div class="chapter">Someday, Soon</div>
+    <h2 class="headline">Things I Can't Wait To Do With You</h2>
+    <ul class="together-list" id="together-list"></ul>
+    <div class="chapter" style="margin-top:1.6rem;">8 Years And Counting</div>
+    <div class="count-grid" id="count-grid"></div>
+    <button class="continue-btn" data-next="15">The Finale</button>
+  </div>
+</section>
+
+<!-- SCENE 15 — finale -->
+<section class="scene" id="scene-15" data-title="Finale">
+  <canvas id="finale-canvas"></canvas>
+  <div class="scene-inner" style="position:relative;z-index:2;">
+    <div class="script" id="finale-heart-text">I Love You, Mote</div>
+    <p class="finale-text" id="finale-text"></p>
+    <button class="last-surprise-btn" id="last-surprise-btn">One Last Surprise</button>
+    <div class="final-final" id="final-final">
+      You are my favorite notification,<br>
+      my favorite smile,<br>
+      my favorite person,<br>
+      and my favorite forever.<br><br>
+      — Adarsh
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+/* ================================================================
+   CONFIG — personalize here
+   ================================================================ */
+const CONFIG = {
+  HER_NAME: "SUHANI",
+  NICKNAME: "Mote",
+  MY_NAME: "Adarsh",
+  TOGETHER_SINCE: "2018-07-05" // edit to your real anniversary date
+};
+
+/* ================================================================
+   SCENE NAVIGATION — button-driven, with a soft iris transition
+   ================================================================ */
+const scenes = Array.from(document.querySelectorAll('.scene'));
+let current = 0;
+let maxVisited = 0;
+const dotsWrap = document.getElementById('dots');
+const backBtn = document.getElementById('back-btn');
+
+scenes.forEach((s,i)=>{
+  const d = document.createElement('button');
+  d.setAttribute('aria-label', 'Go to ' + (s.dataset.title || ('scene '+i)));
+  dotsWrap.appendChild(d);
+  d.addEventListener('click', (e)=>{ if(i<=maxVisited) goTo(i, e); });
+});
+function updateDots(){
+  Array.from(dotsWrap.children).forEach((d,i)=>{
+    d.classList.toggle('visited', i<=maxVisited);
+    d.classList.toggle('active', i===current);
+  });
+  backBtn.classList.toggle('show', current>0);
+}
+updateDots();
+
+function irisTransition(e, callback){
+  const x = (e && e.clientX) ? e.clientX : window.innerWidth/2;
+  const y = (e && e.clientY) ? e.clientY : window.innerHeight/2;
+  const pairs = [
+    ['#ffd9e9','#e9dcf9'], ['#ddc7f7','#fff2f6'], ['#ffe1ee','#ffffff'], ['#e9dcf9','#ffd9e9']
+  ];
+  const pair = pairs[Math.floor(Math.random()*pairs.length)];
+  const veil = document.createElement('div');
+  veil.className = 'veil';
+  veil.style.background = 'radial-gradient(circle at ' + x + 'px ' + y + 'px, ' + pair[0] + ', ' + pair[1] + ')';
+  document.body.appendChild(veil);
+  const maxDim = Math.hypot(window.innerWidth, window.innerHeight);
+
+  if(typeof veil.animate === 'function'){
+    const grow = veil.animate(
+      [ { clipPath: 'circle(0px at ' + x + 'px ' + y + 'px)' },
+        { clipPath: 'circle(' + maxDim + 'px at ' + x + 'px ' + y + 'px)' } ],
+      { duration: 600, easing: 'cubic-bezier(.65,0,.35,1)', fill:'forwards' }
+    );
+    grow.onfinish = ()=>{
+      callback();
+      requestAnimationFrame(()=>{
+        const shrink = veil.animate([{opacity:1},{opacity:0}], { duration:480, easing:'ease' });
+        shrink.onfinish = ()=> veil.remove();
+      });
+    };
+  } else {
+    callback();
+    veil.remove();
+  }
+}
+
+function goTo(idx, e){
+  if(idx<0 || idx>=scenes.length || idx===current) return;
+  irisTransition(e, ()=>{
+    scenes[current].classList.remove('active');
+    current = idx;
+    if(idx>maxVisited) maxVisited = idx;
+    scenes[current].classList.add('active');
+    scenes[current].scrollTop = 0;
+    updateDots();
+    scenes[current].dispatchEvent(new CustomEvent('scene:enter'));
+    placeHeartForScene(idx);
+  });
+}
+
+document.querySelectorAll('.continue-btn').forEach(btn=>{
+  btn.addEventListener('click', (e)=> goTo(parseInt(btn.dataset.next,10), e));
+});
+backBtn.addEventListener('click', (e)=>{ if(current>0) goTo(current-1, e); });
+
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='ArrowRight'){
+    const activeBtn = scenes[current].querySelector('.continue-btn.ready');
+    if(activeBtn) activeBtn.click();
+  } else if(e.key==='ArrowLeft' && current>0){
+    goTo(current-1, e);
+  }
+});
+
+function revealContinue(sceneIndex, delay=1200){
+  const btn = scenes[sceneIndex].querySelector('.continue-btn');
+  if(btn) setTimeout(()=> btn.classList.add('ready'), delay);
+}
+
+/* ================================================================
+   AMBIENT SKY
+   ================================================================ */
+(function initSky(){
+  const canvas = document.getElementById('sky-canvas');
+  const ctx = canvas.getContext('2d');
+  let w,h,stars=[];
+  function resize(){ w=canvas.width=window.innerWidth; h=canvas.height=window.innerHeight; buildStars(); }
+  function buildStars(){
+    stars=[];
+    const count = Math.floor((w*h)/12000);
+    for(let i=0;i<count;i++){
+      stars.push({ x:Math.random()*w, y:Math.random()*h*0.7, r:Math.random()*1.3+0.3,
+        base:Math.random()*0.5+0.2, speed:Math.random()*0.02+0.005, phase:Math.random()*Math.PI*2 });
+    }
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  let t=0;
+  function draw(){
+    t++;
+    ctx.clearRect(0,0,w,h);
+    stars.forEach(s=>{
+      const tw = s.base + Math.sin(t*s.speed+s.phase)*0.3;
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(140,110,150,' + Math.max(0,tw*0.55) + ')';
+      ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+  setTimeout(()=>document.getElementById('moon').classList.add('risen'), 600);
+
+  const floaters = document.getElementById('floaters');
+  const glyphs = ['❤','💗','✿','🦋'];
+  function spawn(){
+    const el = document.createElement('span');
+    el.className='floater';
+    el.textContent = glyphs[Math.floor(Math.random()*glyphs.length)];
+    el.style.left = Math.random()*100+'vw';
+    el.style.setProperty('--drift', (Math.random()*80-40)+'px');
+    el.style.animationDuration = (10+Math.random()*10)+'s';
+    el.style.fontSize = (0.8+Math.random()*1.1)+'rem';
+    el.style.color = Math.random()>0.5 ? '#ff9ec3' : '#b596ec';
+    floaters.appendChild(el);
+    setTimeout(()=>el.remove(), 22000);
+  }
+  setInterval(spawn, 1500);
+  for(let i=0;i<5;i++) setTimeout(spawn, i*400);
+})();
+
+/* ================================================================
+   MUSIC TOGGLE
+   ================================================================ */
+(function initMusic(){
+  const btn = document.getElementById('music-toggle');
+  const audio = document.getElementById('bg-music');
+  let playing = false;
+  btn.addEventListener('click', ()=>{
+    if(!audio.querySelector('source')){
+      btn.textContent = '🔇';
+      btn.title = 'Add a music file in the HTML to enable playback';
+      return;
+    }
+    playing = !playing;
+    playing ? audio.play() : audio.pause();
+    btn.textContent = playing ? '🔊' : '🔈';
+  });
+})();
+
+/* ================================================================
+   SCENE 0 — envelope
+   ================================================================ */
+(function initEnvelope(){
+  const envelope = document.getElementById('envelope');
+  const note = document.getElementById('letter-note');
+  const hint = document.getElementById('intro-hint');
+  function open(){
+    if(envelope.classList.contains('open')) return;
+    envelope.classList.add('open');
+    hint.style.opacity='0';
+    setTimeout(()=>note.classList.add('show'), 500);
+    revealContinue(0, 1700);
+  }
+  envelope.addEventListener('click', open);
+  envelope.addEventListener('keypress', e=>{ if(e.key==='Enter'||e.key===' ') open(); });
+})();
+
+/* ================================================================
+   SCENE 1 — storybook (internal pagination)
+   ================================================================ */
+(function initStorybook(){
+  const pages = [
+    "Eight years ago, I didn't know that meeting you would quietly become the best thing that ever happened to me.",
+    "Somewhere between the small talks and the late night calls, you became home, Mote.",
+    "I never believed in perfect timing, until you walked into mine and stayed.",
+    "Every little thing you do, you do it in a way only you could.",
+    "If I could relive one day on repeat, I'd choose any ordinary day with you.",
+    "Eight years in, and you're still the softest place my heart has ever landed."
+  ];
+  const book = document.getElementById('book');
+  const dotsBox = document.getElementById('book-dots');
+  const prevBtn = document.getElementById('page-prev');
+  const nextBtn = document.getElementById('page-next');
+  let idx = 0;
+
+  pages.forEach((text,i)=>{
+    const div = document.createElement('div');
+    div.className='page';
+    div.innerHTML = '<span class="page-num">Page ' + (i+1) + ' of ' + pages.length + '</span><p>' + text + '</p>';
+    book.appendChild(div);
+    const d = document.createElement('span');
+    dotsBox.appendChild(d);
+  });
+  const pageEls = book.querySelectorAll('.page');
+  const dotEls = dotsBox.querySelectorAll('span');
+
+  function render(){
+    pageEls.forEach((p,i)=> p.classList.toggle('show', i===idx));
+    dotEls.forEach((d,i)=> d.classList.toggle('on', i===idx));
+    prevBtn.disabled = idx===0;
+    nextBtn.disabled = idx===pages.length-1;
+    if(idx===pages.length-1) revealContinue(1, 500);
+  }
+  prevBtn.addEventListener('click', ()=>{ if(idx>0){ idx--; render(); } });
+  nextBtn.addEventListener('click', ()=>{ if(idx<pages.length-1){ idx++; render(); } });
+  render();
+})();
+
+/* ================================================================
+   SCENE 2 — constellation spelling SUHANI
+   ================================================================ */
+(function initConstellation(){
+  const FONT = {
+    A:["01110","10001","10001","11111","10001","10001","10001"],
+    H:["10001","10001","10001","11111","10001","10001","10001"],
+    I:["11111","00100","00100","00100","00100","00100","11111"],
+    N:["10001","11001","10101","10101","10011","10001","10001"],
+    S:["01111","10000","10000","01110","00001","00001","11110"],
+    U:["10001","10001","10001","10001","10001","10001","01110"]
+  };
+  const name = (CONFIG.HER_NAME || "LOVE").toUpperCase().replace(/[^A-Z]/g,'');
+  const svg = document.getElementById('const-svg');
+  const cell = 11, letterGap = 16;
+  let points = [];
+  let cursorX = 20;
+  name.split('').forEach(ch=>{
+    const grid = FONT[ch] || FONT['A'];
+    for(let r=0;r<grid.length;r++){
+      for(let c=0;c<grid[r].length;c++){
+        if(grid[r][c]==='1') points.push({ x: cursorX + c*cell, y: 30 + r*cell });
+      }
+    }
+    cursorX += grid[0].length*cell + letterGap;
+  });
+  const totalWidth = cursorX;
+  const offsetX = Math.max(0,(700-totalWidth)/2);
+  points = points.map(p=>({x:p.x+offsetX, y:p.y}));
+
+  let linesSvg='', starsSvg='';
+  points.forEach((p,i)=>{
+    if(i>0) linesSvg += '<line class="const-line" x1="'+points[i-1].x+'" y1="'+points[i-1].y+'" x2="'+p.x+'" y2="'+p.y+'"></line>';
+    starsSvg += '<circle class="const-star" cx="'+p.x+'" cy="'+p.y+'" r="2.5"></circle>';
+  });
+  const heart = '<path class="const-heart" d="M350 225 C 335 200, 300 200, 300 170 C300 150,320 140,338 155 C 344 160, 350 170, 350 180 C350 170,356 160,362 155 C380 140,400 150,400 170 C400 200,365 200,350 225 Z"/>';
+  svg.innerHTML = linesSvg + starsSvg + heart;
+
+  const section = document.getElementById('scene-2');
+  let played=false;
+  section.addEventListener('scene:enter', ()=>{
+    if(played) return; played=true;
+    const starEls = svg.querySelectorAll('.const-star');
+    const lineEls = svg.querySelectorAll('.const-line');
+    starEls.forEach((s,i)=> setTimeout(()=>s.classList.add('pop'), i*20));
+    lineEls.forEach((l,i)=> setTimeout(()=>l.classList.add('draw'), i*20));
+    const total = starEls.length*20 + 900;
+    setTimeout(()=>{
+      svg.querySelector('.const-heart').classList.add('show');
+      document.getElementById('const-caption').classList.add('show');
+    }, total);
+    revealContinue(2, total + 900);
+  });
+})();
+
+/* ================================================================
+   SCENE 3 — memory garden
+   ================================================================ */
+(function initGarden(){
+  const memories = [
+    { flower:'🌸', quote:'"Best day ever."', memory:'That spontaneous drive with the windows down, just us and the road.' },
+    { flower:'🌷', quote:'"Just us."', memory:'The rainy afternoon we did absolutely nothing and it was still perfect.' },
+    { flower:'🌼', quote:'"Home."', memory:'The first time your laugh made a room full of strangers feel like home.' },
+    { flower:'🌺', quote:'"Again?"', memory:'That dinner we couldn\u2019t stop laughing through, the waiter gave up asking.' },
+    { flower:'🌻', quote:'"Eight years."', memory:'And somehow every year with you has felt shorter than the last.' },
+    { flower:'💮', quote:'"Still smiling."', memory:'The silly voice note you sent that I still replay when I miss you, Mote.' }
+  ];
+  const bed = document.getElementById('garden-bed');
+  memories.forEach(m=>{
+    const btn = document.createElement('button');
+    btn.className='flower';
+    btn.innerHTML =
+      '<span class="flower-bud">'+m.flower+'</span>'+
+      '<div class="flower-card">'+
+        '<div class="memory-photo">📷 add a photo here</div>'+
+        '<div class="memory-quote">'+m.quote+'</div>'+
+        '<div>'+m.memory+'</div>'+
+      '</div>';
+    btn.addEventListener('click', ()=> btn.classList.toggle('open'));
+    bed.appendChild(btn);
+  });
+  document.getElementById('scene-3').addEventListener('scene:enter', ()=> revealContinue(3, 2200));
+})();
+
+/* ================================================================
+   SCENE 4 — love meter
+   ================================================================ */
+(function initLoveMeter(){
+  const fill = document.getElementById('meter-fill');
+  const pct = document.getElementById('meter-pct');
+  const final = document.getElementById('meter-final');
+  const btn = document.getElementById('meter-btn');
+  let filled = false;
+  btn.addEventListener('click', ()=>{
+    if(filled) return;
+    filled = true;
+    btn.disabled = true;
+    fill.style.width = '100%';
+    let p = 0;
+    const step = setInterval(()=>{
+      p = Math.min(100, p + Math.ceil(Math.random()*9));
+      pct.textContent = p + '%';
+      if(p>=100){
+        clearInterval(step);
+        pct.textContent = '100%';
+        final.classList.add('show');
+        launchConfetti(140);
+        revealContinue(4, 600);
+      }
+    }, 90);
+  });
+})();
+
+/* ================================================================
+   SCENE 5 — fireflies
+   ================================================================ */
+(function initFireflies(){
+  const messages = [
+    "You make ordinary days feel cinematic, Mote.",
+    "I fall for you a little more every single day.",
+    "Your voice is my favorite sound.",
+    "You are my calm in every storm.",
+    "Being chosen by you is my favorite thing, eight years running.",
+    "I love the way you say my name.",
+    "You turned a house into home.",
+    "Every plan is better when it includes you."
+  ];
+  const field = document.getElementById('firefly-field');
+  const msgBox = document.getElementById('firefly-msg');
+  const used = new Set();
+  let clicked = 0;
+  for(let i=0;i<9;i++){
+    const f = document.createElement('button');
+    f.className='firefly';
+    f.style.left = (5+Math.random()*85)+'%';
+    f.style.top = (5+Math.random()*80)+'%';
+    f.style.animationDuration = (5+Math.random()*4)+'s';
+    f.setAttribute('aria-label','firefly');
+    f.addEventListener('click', ()=>{
+      let idx;
+      if(used.size>=messages.length) used.clear();
+      do{ idx = Math.floor(Math.random()*messages.length); } while(used.has(idx));
+      used.add(idx);
+      msgBox.textContent = messages[idx];
+      msgBox.classList.add('show');
+      clearTimeout(msgBox._t);
+      msgBox._t = setTimeout(()=>msgBox.classList.remove('show'), 3000);
+      clicked++;
+      if(clicked===1) revealContinue(5, 400);
+    });
+    field.appendChild(f);
+  }
+  document.getElementById('scene-5').addEventListener('scene:enter', ()=> revealContinue(5, 4000));
+})();
+
+/* ================================================================
+   SCENE 6 — balloon
+   ================================================================ */
+(function initBalloon(){
+  const dreams = [
+    { icon:'🗼', title:'A New City', text:'Getting lost in the streets somewhere neither of us has been.' },
+    { icon:'🏖️', title:'A Quiet Beach', text:'Somewhere with no wifi and nowhere to be.' },
+    { icon:'🏡', title:'A Home We Choose', text:'A little space that\u2019s ours, filled with our chaos.' },
+    { icon:'🐾', title:'A Pet, Finally', text:'Non-negotiable. Already part of the plan.' },
+    { icon:'🍳', title:'Sunday Mornings', text:'Bad singing, good breakfast, nowhere to rush to.' },
+    { icon:'💍', title:'Whatever Comes Next', text:'Eight years in, and I\u2019m not done choosing you.' }
+  ];
+  const btn = document.getElementById('balloon-btn');
+  const hint = document.getElementById('balloon-hint');
+  const container = document.getElementById('future-clouds');
+  let launched=false;
+  btn.addEventListener('click', ()=>{
+    if(launched) return;
+    launched=true;
+    btn.style.transition='transform 2s ease-in, opacity 2s ease-in';
+    btn.style.transform='translateY(-220px)';
+    btn.style.opacity='0';
+    hint.style.opacity='0';
+    dreams.forEach((d,i)=>{
+      const card = document.createElement('div');
+      card.className='cloud-card';
+      card.innerHTML = '<div class="cloud-icon">'+d.icon+'</div><h3>'+d.title+'</h3><p>'+d.text+'</p>';
+      container.appendChild(card);
+      setTimeout(()=>card.classList.add('show'), 450+i*200);
+    });
+    revealContinue(6, 450 + dreams.length*200 + 500);
+  });
+})();
+
+/* ================================================================
+   SCENE 7 — shooting star
+   ================================================================ */
+(function initWish(){
+  const section = document.getElementById('scene-7');
+  const result = document.getElementById('wish-result');
+  let granted=false, interval=null;
+
+  function spawnStar(){
+    if(granted) return;
+    const star = document.createElement('div');
+    star.className='shooting-star';
+    star.style.top = (10+Math.random()*40)+'%';
+    star.addEventListener('click', ()=>{
+      if(granted) return;
+      granted = true;
+      result.classList.add('show');
+      launchConfetti(70);
+      star.remove();
+      revealContinue(7, 400);
+      clearInterval(interval);
+    });
+    section.appendChild(star);
+    requestAnimationFrame(()=> star.classList.add('fly'));
+    setTimeout(()=>{ if(star.parentNode) star.remove(); }, 3200);
+  }
+  section.addEventListener('scene:enter', ()=>{
+    if(granted) return;
+    spawnStar();
+    interval = setInterval(spawnStar, 4000);
+  });
+})();
+
+/* ================================================================
+   SCENE 8 — polaroids
+   ================================================================ */
+(function initPolaroids(){
+  const captions = [
+    "the day we got lost on purpose",
+    "your laugh, mid-sentence",
+    "our first trip together",
+    "just a regular Tuesday",
+    "the one you hate but I love",
+    "us, being ridiculous"
+  ];
+  const wall = document.getElementById('polaroid-wall');
+  captions.forEach(c=>{
+    const p = document.createElement('div');
+    p.className='polaroid';
+    p.style.setProperty('--tilt', (Math.random()*10-5)+'deg');
+    p.style.setProperty('--delay', (Math.random()*2)+'s');
+    p.innerHTML = '<div class="frame-photo">📷 add photo</div><div class="caption">'+c+'</div>';
+    wall.appendChild(p);
+  });
+  document.getElementById('scene-8').addEventListener('scene:enter', ()=> revealContinue(8, 1500));
+})();
+
+/* ================================================================
+   SCENE 9 — love letter, self-writing
+   ================================================================ */
+(function initLoveLetter(){
+  const text = "My Suhani, my Mote,\n\nEight years, and there is still no version of my life I'd choose over one that has you in it. You make the ordinary feel extraordinary, and the hardest days feel lighter just because I get to come home to you.\n\nI don't say it enough, so let this be proof, written slowly, meant entirely:\n\nI love you. Today, tomorrow, and every today after that.\n\nYours, always,\nAdarsh";
+  const target = document.getElementById('letter-text');
+  const paper = document.getElementById('letter-paper');
+  let started=false;
+
+  document.getElementById('scene-9').addEventListener('scene:enter', ()=>{
+    if(started) return; started=true;
+    let i=0;
+    function step(){
+      if(i<=text.length){
+        target.innerHTML = text.slice(0,i).replace(/\n/g,'<br>');
+        i++;
+        setTimeout(step, 16);
+      } else {
+        revealContinue(9, 400);
+      }
+    }
+    step();
+  });
+})();
+
+/* ================================================================
+   SCENE 10 — mini game
+   ================================================================ */
+(function initMiniGame(){
+  const field = document.getElementById('game-field');
+  const drag = document.getElementById('heart-drag');
+  const target = document.getElementById('heart-target');
+  const result = document.getElementById('game-result');
+  let dragging=false, offsetX=0, offsetY=0, solved=false;
+
+  function getPos(e){ const t = e.touches ? e.touches[0] : e; return { x:t.clientX, y:t.clientY }; }
+  function start(e){
+    if(solved) return;
+    dragging=true;
+    const p = getPos(e);
+    const rect = drag.getBoundingClientRect();
+    offsetX = p.x - rect.left; offsetY = p.y - rect.top;
+  }
+  function move(e){
+    if(!dragging) return;
+    e.preventDefault();
+    const p = getPos(e);
+    const fieldRect = field.getBoundingClientRect();
+    let x = p.x - fieldRect.left - offsetX;
+    let y = p.y - fieldRect.top - offsetY;
+    x = Math.max(0, Math.min(x, fieldRect.width-42));
+    y = Math.max(0, Math.min(y, fieldRect.height-42));
+    drag.style.left = x+'px'; drag.style.top = y+'px';
+    drag.style.right='auto'; drag.style.bottom='auto';
+
+    const targetRect = target.getBoundingClientRect();
+    const dragRect = drag.getBoundingClientRect();
+    const dx = (dragRect.left+21)-(targetRect.left+21);
+    const dy = (dragRect.top+21)-(targetRect.top+21);
+    if(Math.sqrt(dx*dx+dy*dy) < 38 && !solved){
+      solved = true; dragging=false;
+      target.style.opacity='0';
+      drag.style.transition='all .4s ease';
+      drag.style.left = (targetRect.left-fieldRect.left)+'px';
+      drag.style.top = (targetRect.top-fieldRect.top)+'px';
+      result.classList.add('show');
+      launchConfetti(60);
+      revealContinue(10, 500);
+    }
+  }
+  function end(){ dragging=false; }
+  drag.addEventListener('mousedown', start);
+  drag.addEventListener('touchstart', start, {passive:true});
+  window.addEventListener('mousemove', move);
+  window.addEventListener('touchmove', move, {passive:false});
+  window.addEventListener('mouseup', end);
+  window.addEventListener('touchend', end);
+})();
+
+/* ================================================================
+   SCENE 11 — cake
+   ================================================================ */
+(function initCake(){
+  const top = document.getElementById('cake-top');
+  const bottom = document.getElementById('cake-bottom');
+  const msg = document.getElementById('cake-msg');
+  const positions = [
+    {parent:top, left:'20%'}, {parent:top, left:'50%'}, {parent:top, left:'80%'},
+    {parent:bottom, left:'15%'}, {parent:bottom, left:'50%'}, {parent:bottom, left:'85%'}
+  ];
+  let blown=0;
+  positions.forEach(pos=>{
+    const c = document.createElement('div');
+    c.className='candle';
+    c.style.left = pos.left; c.style.transform='translateX(-50%)';
+    c.innerHTML = '<div class="flame"></div>';
+    c.addEventListener('click', ()=>{
+      if(c.classList.contains('blown')) return;
+      c.classList.add('blown');
+      blown++;
+      if(blown===positions.length){
+        msg.classList.add('show');
+        launchConfetti(110);
+        revealContinue(11, 600);
+      }
+    });
+    pos.parent.appendChild(c);
+  });
+})();
+
+/* ================================================================
+   SCENE 12 — achievements
+   ================================================================ */
+(function initAchievements(){
+  const items = [
+    {icon:'🏆', label:'Best Smile'},
+    {icon:'🏆', label:'Best Hug'},
+    {icon:'🏆', label:'Cutest Laugh'},
+    {icon:'🏆', label:"World's Sweetest"},
+    {icon:'🏆', label:'My Forever Favorite'}
+  ];
+  const grid = document.getElementById('badge-grid');
+  items.forEach(i=>{
+    const div = document.createElement('div');
+    div.className='badge';
+    div.innerHTML = '<div class="trophy">'+i.icon+'</div><div class="label">'+i.label+'</div>';
+    grid.appendChild(div);
+  });
+  document.getElementById('scene-12').addEventListener('scene:enter', ()=> revealContinue(12, 1000));
+})();
+
+/* ================================================================
+   SCENE 13 — 100 reasons
+   ================================================================ */
+(function initReasons(){
+  const base = [
+    "The way you say good morning like you mean it.",
+    "You remember the tiny things I forget I said.",
+    "Your laugh is the best sound in any room.",
+    "You make hard days feel survivable.",
+    "The way you dance when you think no one's watching.",
+    "You're the first person I want to tell good news.",
+    "You believe in me on days I don't believe in myself.",
+    "Your hugs fix almost everything.",
+    "You make ordinary Tuesdays feel special.",
+    "You're patient with me, even when I'm not patient with myself.",
+    "The way your eyes crinkle when you really smile.",
+    "You never let an argument stay unresolved overnight.",
+    "You still get excited about the little things.",
+    "You make me want to be better, without ever demanding it.",
+    "The way you say my name.",
+    "You're my favorite person to do nothing with.",
+    "You never make me feel silly for caring too much.",
+    "Your handwriting on little notes you leave me.",
+    "You make me laugh until it doesn't make sense anymore.",
+    "Eight years later, you still choose me."
+  ];
+  const scroller = document.getElementById('reasons-scroller');
+  for(let i=0;i<100;i++){
+    const text = base[i % base.length];
+    const card = document.createElement('div');
+    card.className='reason-card';
+    card.innerHTML = '<span class="num">Reason '+String(i+1).padStart(3,'0')+'</span>'+text;
+    scroller.appendChild(card);
+  }
+  document.getElementById('scene-13').addEventListener('scene:enter', ()=> revealContinue(13, 1200));
+})();
+
+/* ================================================================
+   SCENE 14 — together list + countdown
+   ================================================================ */
+(function initTogether(){
+  const items = [
+    { icon:'🌍', text:'Visit a country neither of us has been to.' },
+    { icon:'🏔️', text:'Watch the sunrise from somewhere high up.' },
+    { icon:'🐶', text:'Finally get that pet we keep talking about.' },
+    { icon:'🍝', text:'Take a cooking class and ruin the recipe together.' },
+    { icon:'🎡', text:'Ride a Ferris wheel at golden hour.' },
+    { icon:'💍', text:'Say forever, out loud, in front of everyone.' }
+  ];
+  const list = document.getElementById('together-list');
+  items.forEach(i=>{
+    const li = document.createElement('li');
+    li.innerHTML = '<span class="ico">'+i.icon+'</span><span class="txt">'+i.text+'</span>';
+    list.appendChild(li);
+  });
+
+  const grid = document.getElementById('count-grid');
+  const start = new Date(CONFIG.TOGETHER_SINCE);
+  function render(){
+    const now = new Date();
+    let diff = Math.max(0, now - start);
+    const days = Math.floor(diff/86400000);
+    const hours = Math.floor((diff%86400000)/3600000);
+    const mins = Math.floor((diff%3600000)/60000);
+    const secs = Math.floor((diff%60000)/1000);
+    grid.innerHTML =
+      '<div class="count-box"><div class="num">'+days+'</div><div class="lbl">Days</div></div>'+
+      '<div class="count-box"><div class="num">'+hours+'</div><div class="lbl">Hours</div></div>'+
+      '<div class="count-box"><div class="num">'+mins+'</div><div class="lbl">Minutes</div></div>'+
+      '<div class="count-box"><div class="num">'+secs+'</div><div class="lbl">Seconds</div></div>';
+  }
+  render();
+  setInterval(render, 1000);
+  document.getElementById('scene-14').addEventListener('scene:enter', ()=> revealContinue(14, 1200));
+})();
+
+/* ================================================================
+   TREASURE HUNT — 10 hidden hearts, one per scene 1-14 (skip 0 & 15)
+   ================================================================ */
+(function initTreasureHunt(){
+  const surprises = [
+    { text:"You're even more beautiful than you think you are." },
+    { text:"Why did the heart cross the road? To get to yours." },
+    { text:"Remember our first date? I was more nervous than I let on." },
+    { text:"Your smile has never once failed to fix my day." },
+    { text:"I'm not a photographer, but I can picture us together." },
+    { text:"That night we talked until 3am about nothing and everything." },
+    { text:"You make being loved look easy." },
+    { text:"Are you a magician? Whenever I look at you, everyone else disappears." },
+    { text:"Eight years, and getting lost with you is still my favorite trip." },
+    { text:"You are, quite simply, my favorite thing about every day, Mote." }
+  ];
+  const counterBox = document.getElementById('hunt-counter');
+  const countEl = document.getElementById('hunt-count');
+  let found = 0;
+  window._huntFound = new Array(surprises.length).fill(false);
+  window._currentHeartEl = null;
+
+  function heartSVG(color){
+    return '<svg viewBox="0 0 32 32"><path fill="'+color+'" d="M16 29 C 6 21, 1 15, 1 9 C1 3,7 0,11 3 C13 4.5,15 7,16 9 C17 7,19 4.5,21 3 C25 0,31 3,31 9 C31 15,26 21,16 29 Z"/></svg>';
+  }
+  function showToast(text){
+    const toast = document.createElement('div');
+    toast.setAttribute('role','status');
+    toast.style.cssText = 'position:fixed;left:50%;bottom:30px;transform:translateX(-50%) translateY(20px);background:rgba(255,255,255,.92);color:#4c3a5c;border:1px solid rgba(255,255,255,1);padding:1rem 1.3rem;border-radius:12px;max-width:min(85vw,360px);text-align:center;font-family:\'Cormorant Garamond\',serif;font-style:italic;font-size:1rem;z-index:150;opacity:0;transition:opacity .4s ease, transform .4s ease;box-shadow:0 20px 40px -14px rgba(181,150,236,.5);';
+    toast.textContent = text;
+    document.body.appendChild(toast);
+    requestAnimationFrame(()=>{ toast.style.opacity='1'; toast.style.transform='translateX(-50%) translateY(0)'; });
+    setTimeout(()=>{ toast.style.opacity='0'; toast.style.transform='translateX(-50%) translateY(20px)'; setTimeout(()=>toast.remove(),500); }, 3200);
+  }
+
+  window.placeHeartForScene = function(sceneIdx){
+    if(window._currentHeartEl){ window._currentHeartEl.remove(); window._currentHeartEl=null; }
+    const dataIdx = sceneIdx - 1; // scene 1 -> surprise 0 ... scene 10 -> surprise 9
+    if(dataIdx<0 || dataIdx>=surprises.length) return;
+    if(window._huntFound[dataIdx]) return;
+    const colors = ['#ff9ec3','#b596ec','#f0c27e','#ffc7dd'];
+    const heart = document.createElement('button');
+    heart.className='hidden-heart';
+    heart.style.top = (14+Math.random()*70)+'%';
+    heart.style.left = (Math.random()>0.5 ? (3+Math.random()*8) : (89-Math.random()*8))+'%';
+    heart.innerHTML = heartSVG(colors[dataIdx%colors.length]);
+    heart.setAttribute('aria-label','hidden heart surprise');
+    heart.addEventListener('click', ()=>{
+      if(heart.classList.contains('found')) return;
+      heart.classList.add('found');
+      window._huntFound[dataIdx] = true;
+      found++;
+      countEl.textContent = found;
+      showToast(surprises[dataIdx].text);
+      if(found===surprises.length){
+        setTimeout(()=>{
+          showToast("You found every heart I hid for you, Mote. Secret unlocked: I'd hide a thousand more, just to watch you find them.");
+          launchConfetti(150);
+        }, 500);
+      }
+    });
+    document.body.appendChild(heart);
+    window._currentHeartEl = heart;
+  };
+
+  setTimeout(()=>counterBox.classList.add('show'), 3500);
+  placeHeartForScene(0);
+})();
+
+/* ================================================================
+   SCENE 15 — finale
+   ================================================================ */
+(function initFinale(){
+  const section = document.getElementById('scene-15');
+  const canvas = document.getElementById('finale-canvas');
+  const ctx = canvas.getContext('2d');
+  const finaleText = document.getElementById('finale-text');
+  const finalFinal = document.getElementById('final-final');
+  const btn = document.getElementById('last-surprise-btn');
+
+  finaleText.textContent = "Every sunrise is brighter because you exist.\nEvery smile is sweeter because of you.\nEvery dream feels possible because you're beside me.\n\nThank you for being my safest place,\nmy biggest blessing,\nmy best friend,\nand the love of my life.\n\nHappy Birthday, My Beautiful Suhani.\n\nEight years in, and I promise to choose you,\nagain and again,\nevery single day.\n\nForever isn't long enough with you, Mote. ❤️";
+
+  let w,h;
+  function resize(){ w=canvas.width=section.offsetWidth; h=canvas.height=section.offsetHeight; }
+  resize(); window.addEventListener('resize', resize);
+
+  function heartPoint(t){
+    const x = 16*Math.pow(Math.sin(t),3);
+    const y = 13*Math.cos(t) - 5*Math.cos(2*t) - 2*Math.cos(3*t) - Math.cos(4*t);
+    return { x, y };
+  }
+  let particles=[];
+  function buildHeart(){
+    particles=[];
+    const scale = Math.min(w,h)/34;
+    const cx = w/2, cy = h/2 - 30;
+    for(let i=0;i<140;i++){
+      const t = Math.random()*Math.PI*2;
+      const p = heartPoint(t);
+      particles.push({ tx:cx+p.x*scale, ty:cy-p.y*scale, x:Math.random()*w, y:Math.random()*h, r:Math.random()*1.6+0.8 });
+    }
+  }
+  buildHeart();
+  let started=false, progress=0;
+  function animate(){
+    ctx.clearRect(0,0,w,h);
+    progress = Math.min(1, progress+0.02);
+    particles.forEach(p=>{
+      const cx = p.x + (p.tx-p.x)*progress;
+      const cy = p.y + (p.ty-p.y)*progress;
+      ctx.beginPath();
+      ctx.fillStyle = 'rgba(255,158,196,'+(0.55+0.4*progress)+')';
+      ctx.shadowColor = '#ff9ec3';
+      ctx.shadowBlur = 8;
+      ctx.arc(cx,cy,p.r,0,Math.PI*2);
+      ctx.fill();
+    });
+    if(progress<1) requestAnimationFrame(animate);
+  }
+
+  section.addEventListener('scene:enter', ()=>{
+    if(started) return; started=true;
+    animate();
+    setTimeout(()=>finaleText.classList.add('show'), 1200);
+  });
+
+  btn.addEventListener('click', ()=>{
+    launchConfetti(240);
+    launchFireworks();
+    finalFinal.classList.add('show');
+    btn.style.display='none';
+  });
+})();
+
+/* ================================================================
+   CONFETTI HELPERS
+   ================================================================ */
+function launchConfetti(count){
+  if(typeof confetti !== 'function') return;
+  confetti({ particleCount: count||100, spread:90, origin:{y:0.6}, colors:['#ffc7dd','#ddc7f7','#f0c27e','#fff'] });
+}
+function launchFireworks(){
+  if(typeof confetti !== 'function') return;
+  const end = Date.now() + 2400;
+  (function frame(){
+    confetti({ particleCount:5, angle:60, spread:70, origin:{x:0}, colors:['#ffc7dd','#f0c27e'] });
+    confetti({ particleCount:5, angle:120, spread:70, origin:{x:1}, colors:['#ddc7f7','#fff'] });
+    if(Date.now() < end) requestAnimationFrame(frame);
+  })();
+}
+</script>
+</body>
+</html>
