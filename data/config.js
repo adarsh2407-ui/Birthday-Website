@@ -11,5 +11,5 @@ window.CONFIG = {
   videoPaths: ['assets/videos/memory1.mp4'],
   voiceNotes: ['assets/music/voice1.mp3'],
   // NOTE: Change this password value to your desired password
-  password: 'Suhana2407'
+  password: 'Suhana@2407'
 };
